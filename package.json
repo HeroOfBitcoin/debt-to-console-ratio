@@ -1,0 +1,16 @@
+{
+  "name": "retro-national-debt-calculator",
+  "version": "1.0.0",
+  "description": "A national debt calculator that converts debt into retro console equivalents.",
+  "main": "dist/app.js",
+  "scripts": {
+    "build": "npx tsc",
+    "deploy": "gh-pages -d dist"
+  },
+  "dependencies": {
+    "gh-pages": "^3.2.3"
+  },
+  "devDependencies": {
+    "typescript": "^4.4.4"
+  }
+}
