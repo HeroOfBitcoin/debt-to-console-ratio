@@ -7,10 +7,8 @@
     "build": "npx tsc",
     "deploy": "gh-pages -d dist"
   },
-  "dependencies": {
-    "gh-pages": "^3.2.3"
-  },
   "devDependencies": {
+    "gh-pages": "^6.1.1",
     "typescript": "^4.4.4"
   }
 }
