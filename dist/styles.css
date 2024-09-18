@@ -131,7 +131,7 @@ footer a:hover {
 #disclaimer-container {
   flex: 1 1 auto;
   color: #fff;
-  font-size: 0.75em; /* Small but readable font size */
+  font-size: 0.5em; /* Small but readable font size */
   padding-left: 20px;
   text-align: right;
 }
