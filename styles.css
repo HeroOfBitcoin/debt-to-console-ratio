@@ -59,7 +59,6 @@ li {
   border-radius: 10px;
   margin-bottom: 15px;
   background-color:  #f7931a; /* Dark background inside the border */
-  color: #000;
 }
 
 /* Remove any border, margin, or padding from the inner elements */
@@ -159,3 +158,37 @@ footer a:hover {
 #social-contacts a:hover {
   text-decoration: underline;
 }
+
+a.my-button{
+  background: linear-gradient(to right,#c3ca19 ,#e09633);
+  background-color: #c3ca19;
+  color: #fff;
+  font-size: 26px;
+  font-weight: 800;
+  font-style: normal;
+  text-decoration: none;
+  padding: 15px 11px;
+  border: 3px solid #000;
+  border-radius: 10px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  text-shadow: 2px 2px 0px #000;
+ }
+ a.my-button span{
+  margin-right: 11px;
+  display: block;
+  width: 33px;
+  height: 33px;
+  background-image: url("images/bitcoinpng");
+  background-repeat: no-repeat;
+  background-size: contain;
+  transform: rotate(0deg);
+ }
+ a.my-button:hover{
+  background: linear-gradient(to right,#cad054 ,#e3a45e);
+  background-color: #cad054;
+ }
+ a.my-button:active{
+  transform: scale(0.95);
+ }
