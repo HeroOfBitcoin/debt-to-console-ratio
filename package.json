@@ -14,6 +14,7 @@
     "build": "tsc",
     "postbuild": "node scripts/copy-public.mjs",
     "test": "npm run build && node --test tests/*.test.mjs",
+    "data:update": "node scripts/update-debt-data.mjs",
     "predeploy": "npm test",
     "deploy": "gh-pages -d dist"
   },

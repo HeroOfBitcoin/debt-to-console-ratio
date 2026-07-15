@@ -1,14 +1,25 @@
 # Debt to Console Ratio
 
-Debt to Console Ratio is a playful [Hero of Bitcoin](https://heroofbitcoin.xyz/) side project. It turns national debt estimates into Bitcoin and classic game console equivalents—because trillions are easier to grasp when expressed as a warehouse full of Game Boys.
+A playful [Hero of Bitcoin](https://heroofbitcoin.xyz/) side project that translates national debt into Bitcoin and classic game console equivalents.
 
 [Open the live site](https://heroofbitcoin.github.io/debt-to-console-ratio/)
 
-## How the numbers work
+## Data
 
-The United States figure comes from the latest U.S. Treasury Debt to the Penny record. Other countries use the newest year for which the World Bank provides both central-government debt-to-GDP and GDP; the application multiplies those two observations from the same year. Clearly labelled cached estimates are used only when the World Bank has no usable response. Bitcoin conversions use CoinGecko without a fabricated fallback price, while console equivalents use fixed illustrative reference prices defined in the application.
+The checked-in snapshot in `public/data/debt.json` keeps every country comparison available without relying on a third-party API at page load.
 
-These figures are illustrative. Reporting dates, definitions of public debt, exchange rates, and market prices differ, so countries are not perfectly comparable and results should not be treated as current fiscal data or financial advice.
+- United States: U.S. Treasury **Debt to the Penny**; the browser may refresh this figure from Treasury.
+- Other countries: IMF **World Economic Outlook** general-government gross debt as a percentage of GDP, multiplied by nominal GDP for the same year.
+- Bitcoin: live USD price from CoinGecko, loaded independently of the debt and console ratios.
+- Consoles: fixed illustrative USD reference prices in `src/data.ts`.
+
+Update and validate the Treasury + IMF snapshot with:
+
+```bash
+npm run data:update
+```
+
+Country definitions, reporting dates, IMF estimates, exchange rates, and console prices differ. The comparisons are illustrative, not financial advice.
 
 ## Development
 
@@ -16,38 +27,22 @@ Node.js 20 or newer is required.
 
 ```bash
 npm install
-npm run build
 npm test
-```
-
-`npm run build` clears the generated `dist/` directory, compiles the TypeScript sources in `src/`, and copies the static files from `public/`. To preview the result locally:
-
-```bash
 python3 -m http.server 8080 --directory dist
 ```
 
-Then open <http://127.0.0.1:8080>.
+Open <http://127.0.0.1:8080>. `npm test` creates a clean build in `dist/` before running the test suite.
 
 ## Deployment
 
-GitHub Pages serves the root of the `gh-pages` branch. A deployment always runs a clean build and the test suite first:
+GitHub Pages serves the `gh-pages` branch:
 
 ```bash
 npm run deploy
 ```
 
-Deploying requires write access to the repository. Do not edit `dist/` directly; it is ignored build output.
-
-## Structure
-
-```text
-src/                    Application, data model, and pure calculations
-public/                 HTML, CSS, favicon, and image sources
-scripts/                Reproducible build helpers
-tests/                  Node test suite
-dist/                   Generated site output (ignored)
-```
+Do not edit `dist/` directly; it is generated from `src/` and `public/`.
 
 ## License and assets
 
-The source code is available under the [MIT License](LICENSE). Product names and trademarks belong to their respective owners. Image assets are not automatically covered by the code license; verify their provenance and permitted use before redistributing them separately.
+Code is available under the [MIT License](LICENSE). Product names and trademarks belong to their respective owners. Verify image-asset rights before redistributing them separately.
