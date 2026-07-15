@@ -22,6 +22,8 @@ const TREASURY_DEBT_URL =
   'https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v2/accounting/od/debt_to_penny?sort=-record_date&page[size]=1';
 const COINGECKO_PRICE_URL =
   'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_last_updated_at=true';
+const CAROUSEL_AUTOPLAY_MS = 6_500;
+const CAROUSEL_TRANSITION_MS = 320;
 
 interface AppElements {
   countrySelection: HTMLSelectElement;
@@ -29,21 +31,40 @@ interface AppElements {
   debtLabel: HTMLElement;
   debtValue: HTMLElement;
   debtMeta: HTMLElement;
+  consoleCarousel: HTMLElement;
+  carouselSlide: HTMLElement;
   featuredConsoleName: HTMLElement;
   featuredConsoleValue: HTMLElement;
+  featuredConsolePrice: HTMLElement;
+  heroConsoleImage: HTMLImageElement;
+  carouselPosition: HTMLElement;
+  carouselPrevious: HTMLButtonElement;
+  carouselToggle: HTMLButtonElement;
+  carouselNext: HTMLButtonElement;
+  carouselAnnouncement: HTMLElement;
+  bitcoinTitle: HTMLElement;
   bitcoinValue: HTMLElement;
   bitcoinMeta: HTMLElement;
-  consoleList: HTMLElement;
-  heroConsoleImage: HTMLImageElement;
 }
 
 let debtSnapshotPromise: Promise<DebtSnapshot> | null = null;
 let bitcoinPricePromise: Promise<BitcoinPriceData | null> | null = null;
 let debtByCountry = new Map<string, DebtSnapshotEntry>();
 let activeCountryCode: CountryCode = COUNTRIES[0].code;
+let activeConsoleIndex = 0;
+let activeDebtAmountUsd: number | null = null;
 let activeSelectionId = 0;
 let activeRatioRenderId = 0;
 let activeTreasuryController: AbortController | null = null;
+let carouselAutoplayId: number | null = null;
+let carouselTransitionId: number | null = null;
+let carouselPaused = true;
+let carouselPointerInside = false;
+let carouselFocusInside = false;
+let carouselInteractionOverride = false;
+let carouselAnnouncementId = 0;
+let reducedMotionQuery: MediaQueryList | null = null;
+let preloadedConsoleImages: HTMLImageElement[] = [];
 
 function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'AbortError';
@@ -211,63 +232,160 @@ function renderBitcoin(
     `${formatUsd(bitcoinPrice.priceUsd)} per BTC · CoinGecko${updated}`;
 }
 
-function renderFeaturedConsole(debtAmountUsd: number, elements: AppElements): void {
-  const featuredConsole = CONSOLES[0];
-  const equivalent = calculateConsoleEquivalent(
-    debtAmountUsd,
-    featuredConsole.referencePriceUsd,
+function renderActiveConsole(elements: AppElements): void {
+  const consoleReference = CONSOLES[activeConsoleIndex];
+  const position = String(activeConsoleIndex + 1).padStart(2, '0');
+  const total = String(CONSOLES.length).padStart(2, '0');
+
+  elements.featuredConsoleName.textContent = consoleReference.ratioLabel;
+  elements.featuredConsolePrice.textContent =
+    `Reference price: ${formatUsd(consoleReference.referencePriceUsd)}`;
+  elements.heroConsoleImage.src = consoleReference.imagePath;
+  elements.heroConsoleImage.alt = '';
+  elements.heroConsoleImage.width = consoleReference.imageWidth;
+  elements.heroConsoleImage.height = consoleReference.imageHeight;
+  elements.carouselPosition.textContent = `${position} / ${total}`;
+  elements.carouselSlide.removeAttribute('aria-labelledby');
+  elements.carouselSlide.setAttribute(
+    'aria-label',
+    `Slide ${activeConsoleIndex + 1} of ${CONSOLES.length}: ${consoleReference.ratioLabel}`,
   );
 
-  elements.featuredConsoleName.textContent = featuredConsole.id === 'game-boy'
-    ? 'Game Boys'
-    : featuredConsole.name;
+  if (activeDebtAmountUsd === null) {
+    elements.featuredConsoleValue.textContent = '—';
+    elements.featuredConsoleValue.removeAttribute('aria-label');
+    return;
+  }
+
+  const equivalent = calculateConsoleEquivalent(
+    activeDebtAmountUsd,
+    consoleReference.referencePriceUsd,
+  );
   elements.featuredConsoleValue.textContent = formatCompactCount(equivalent);
   elements.featuredConsoleValue.setAttribute(
     'aria-label',
-    `${formatCount(equivalent)} ${featuredConsole.name} consoles`,
+    `${formatCount(equivalent)} ${consoleReference.ratioLabel}`,
   );
 }
 
-function renderConsoles(debtAmountUsd: number, elements: AppElements): void {
-  clearElement(elements.consoleList);
+function clearCarouselTransition(elements: AppElements): void {
+  if (carouselTransitionId !== null) {
+    window.clearTimeout(carouselTransitionId);
+    carouselTransitionId = null;
+  }
+  elements.consoleCarousel.classList.remove('is-transitioning');
+  delete elements.consoleCarousel.dataset.direction;
+}
 
-  for (const consoleReference of CONSOLES) {
-    const item = document.createElement('li');
-    item.className = 'console-row';
+function beginCarouselTransition(
+  direction: 'previous' | 'next',
+  elements: AppElements,
+): void {
+  clearCarouselTransition(elements);
+  if (reducedMotionQuery?.matches) {
+    return;
+  }
 
-    const image = document.createElement('img');
+  elements.consoleCarousel.dataset.direction = direction;
+  elements.consoleCarousel.classList.add('is-transitioning');
+  carouselTransitionId = window.setTimeout(() => {
+    clearCarouselTransition(elements);
+  }, CAROUSEL_TRANSITION_MS);
+}
+
+function announceActiveConsole(elements: AppElements): void {
+  const announcementId = ++carouselAnnouncementId;
+  elements.carouselAnnouncement.textContent = '';
+  window.requestAnimationFrame(() => {
+    if (announcementId !== carouselAnnouncementId) {
+      return;
+    }
+    const consoleReference = CONSOLES[activeConsoleIndex];
+    elements.carouselAnnouncement.textContent =
+      `Showing ${consoleReference.ratioLabel}, slide ${activeConsoleIndex + 1} of ${CONSOLES.length}.`;
+  });
+}
+
+function stopCarouselAutoplay(): void {
+  if (carouselAutoplayId !== null) {
+    window.clearInterval(carouselAutoplayId);
+    carouselAutoplayId = null;
+  }
+}
+
+function updateCarouselToggle(elements: AppElements): void {
+  const action = carouselPaused ? 'Play' : 'Pause';
+  elements.carouselToggle.textContent = action;
+  elements.carouselToggle.removeAttribute('aria-pressed');
+  elements.carouselToggle.setAttribute(
+    'aria-label',
+    `${action} automatic console rotation`,
+  );
+}
+
+function setActiveConsole(
+  index: number,
+  direction: 'previous' | 'next',
+  elements: AppElements,
+  announce: boolean,
+): void {
+  const normalizedIndex = (index + CONSOLES.length) % CONSOLES.length;
+  if (normalizedIndex !== activeConsoleIndex) {
+    beginCarouselTransition(direction, elements);
+    activeConsoleIndex = normalizedIndex;
+    renderActiveConsole(elements);
+  }
+  if (announce) {
+    announceActiveConsole(elements);
+  }
+}
+
+function startCarouselAutoplay(elements: AppElements): void {
+  stopCarouselAutoplay();
+  if (
+    carouselPaused
+    || (
+      !carouselInteractionOverride
+      && (carouselPointerInside || carouselFocusInside)
+    )
+    || activeDebtAmountUsd === null
+    || elements.carouselNext.disabled
+    || document.visibilityState === 'hidden'
+  ) {
+    return;
+  }
+
+  carouselAutoplayId = window.setInterval(() => {
+    setActiveConsole(activeConsoleIndex + 1, 'next', elements, false);
+  }, CAROUSEL_AUTOPLAY_MS);
+}
+
+function useCarouselControl(
+  index: number,
+  direction: 'previous' | 'next',
+  elements: AppElements,
+): void {
+  setActiveConsole(index, direction, elements, true);
+  startCarouselAutoplay(elements);
+}
+
+function setCarouselControlsDisabled(elements: AppElements, disabled: boolean): void {
+  elements.carouselPrevious.disabled = disabled;
+  elements.carouselToggle.disabled = disabled;
+  elements.carouselNext.disabled = disabled;
+  if (disabled) {
+    stopCarouselAutoplay();
+  }
+}
+
+function preloadConsoleImages(): void {
+  preloadedConsoleImages = CONSOLES.map((consoleReference) => {
+    const image = new Image(consoleReference.imageWidth, consoleReference.imageHeight);
     image.src = consoleReference.imagePath;
     image.alt = '';
-    image.className = 'console-image';
-    image.loading = 'lazy';
     image.decoding = 'async';
-    image.width = consoleReference.imageWidth;
-    image.height = consoleReference.imageHeight;
-
-    const copy = document.createElement('div');
-    copy.className = 'console-copy';
-    const name = document.createElement('h3');
-    name.className = 'console-name';
-    name.textContent = consoleReference.name;
-    const count = document.createElement('p');
-    count.className = 'console-count';
-    const equivalent = calculateConsoleEquivalent(
-      debtAmountUsd,
-      consoleReference.referencePriceUsd,
-    );
-    count.textContent = formatCompactCount(equivalent);
-    count.setAttribute(
-      'aria-label',
-      `${formatCount(equivalent)} ${consoleReference.name} consoles`,
-    );
-    const note = document.createElement('small');
-    note.className = 'console-price';
-    note.textContent = `Reference price: ${formatUsd(consoleReference.referencePriceUsd)}`;
-
-    copy.append(name, count, note);
-    item.append(image, copy);
-    elements.consoleList.appendChild(item);
-  }
+    return image;
+  });
 }
 
 function renderDebt(
@@ -277,14 +395,17 @@ function renderDebt(
   elements: AppElements,
 ): void {
   const ratioRenderId = ++activeRatioRenderId;
+  activeDebtAmountUsd = debt.amountUsd;
 
   elements.debtLabel.textContent = country.code === 'USA'
     ? `${country.name} national debt`
     : `${country.name} general government gross debt`;
   elements.debtValue.textContent = formatCompactUsd(debt.amountUsd);
+  elements.debtValue.setAttribute('aria-label', formatUsd(debt.amountUsd));
   appendDebtMeta(elements.debtMeta, debt);
-  renderFeaturedConsole(debt.amountUsd, elements);
-  renderConsoles(debt.amountUsd, elements);
+  renderActiveConsole(elements);
+  setCarouselControlsDisabled(elements, false);
+  startCarouselAutoplay(elements);
 
   elements.status.classList.remove('is-loading', 'is-error');
   elements.status.dataset.state = 'ready';
@@ -306,20 +427,24 @@ function renderDebt(
 }
 
 function setPackagedDataError(elements: AppElements): void {
+  activeDebtAmountUsd = null;
+  activeRatioRenderId += 1;
   elements.countrySelection.disabled = true;
+  setCarouselControlsDisabled(elements, true);
   elements.status.classList.remove('is-loading');
   elements.status.classList.add('is-error');
   elements.status.dataset.state = 'error';
   elements.status.textContent = 'Debt data could not be loaded. Please try again later.';
   elements.debtLabel.textContent = 'Debt data unavailable';
   elements.debtValue.textContent = '—';
-  elements.debtMeta.textContent = 'The packaged Treasury and IMF dataset is unavailable.';
-  elements.featuredConsoleValue.textContent = '—';
-  elements.featuredConsoleValue.removeAttribute('aria-label');
+  elements.debtValue.removeAttribute('aria-label');
+  elements.debtMeta.textContent = '';
+  renderActiveConsole(elements);
+  elements.carouselAnnouncement.textContent = '';
+  elements.bitcoinTitle.textContent = 'Bitcoin';
   elements.bitcoinValue.textContent = '—';
   elements.bitcoinValue.removeAttribute('aria-label');
   elements.bitcoinMeta.textContent = '';
-  clearElement(elements.consoleList);
 }
 
 async function refreshUnitedStatesDebt(
@@ -402,21 +527,29 @@ function initializeApp(): void {
     debtLabel: requiredElement('debt-label'),
     debtValue: requiredElement('debt-value'),
     debtMeta: requiredElement('debt-meta'),
+    consoleCarousel: requiredElement('console-carousel'),
+    carouselSlide: requiredElement('carousel-slide'),
     featuredConsoleName: requiredElement('featured-console-name'),
     featuredConsoleValue: requiredElement('featured-console-value'),
+    featuredConsolePrice: requiredElement('featured-console-price'),
+    heroConsoleImage: requiredElement<HTMLImageElement>('hero-console-image'),
+    carouselPosition: requiredElement('carousel-position'),
+    carouselPrevious: requiredElement<HTMLButtonElement>('carousel-previous'),
+    carouselToggle: requiredElement<HTMLButtonElement>('carousel-toggle'),
+    carouselNext: requiredElement<HTMLButtonElement>('carousel-next'),
+    carouselAnnouncement: requiredElement('carousel-announcement'),
+    bitcoinTitle: requiredElement('bitcoin-title'),
     bitcoinValue: requiredElement('bitcoin-value'),
     bitcoinMeta: requiredElement('bitcoin-meta'),
-    consoleList: requiredElement('console-list'),
-    heroConsoleImage: requiredElement<HTMLImageElement>('hero-console-image'),
   };
 
-  const heroConsole = CONSOLES[0];
-  elements.heroConsoleImage.src = heroConsole.imagePath;
-  elements.heroConsoleImage.alt = `${heroConsole.name} console`;
-  elements.heroConsoleImage.width = heroConsole.imageWidth;
-  elements.heroConsoleImage.height = heroConsole.imageHeight;
+  preloadConsoleImages();
+  reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+  carouselPaused = reducedMotionQuery.matches;
   elements.countrySelection.disabled = true;
+  setCarouselControlsDisabled(elements, true);
   renderCountryOptions(elements);
+  updateCarouselToggle(elements);
 
   elements.countrySelection.addEventListener('change', () => {
     const country = COUNTRIES.find(
@@ -425,6 +558,113 @@ function initializeApp(): void {
     if (country) {
       selectCountry(country.code, elements);
     }
+  });
+
+  elements.carouselPrevious.addEventListener('click', () => {
+    useCarouselControl(activeConsoleIndex - 1, 'previous', elements);
+  });
+  elements.carouselNext.addEventListener('click', () => {
+    useCarouselControl(activeConsoleIndex + 1, 'next', elements);
+  });
+  elements.carouselToggle.addEventListener('click', () => {
+    if (carouselPaused) {
+      carouselPaused = false;
+      carouselInteractionOverride = carouselPointerInside || carouselFocusInside;
+    } else {
+      carouselPaused = true;
+      carouselInteractionOverride = false;
+    }
+    updateCarouselToggle(elements);
+    startCarouselAutoplay(elements);
+  });
+
+  elements.consoleCarousel.addEventListener('keydown', (event) => {
+    const eventTarget = event.target;
+    if (
+      !(eventTarget instanceof Element)
+      || eventTarget.closest('button, select, a, input, textarea')
+      || elements.carouselNext.disabled
+      || event.altKey
+      || event.ctrlKey
+      || event.metaKey
+    ) {
+      return;
+    }
+
+    switch (event.key) {
+      case 'ArrowLeft':
+        event.preventDefault();
+        useCarouselControl(activeConsoleIndex - 1, 'previous', elements);
+        break;
+      case 'ArrowRight':
+        event.preventDefault();
+        useCarouselControl(activeConsoleIndex + 1, 'next', elements);
+        break;
+      case 'Home':
+        event.preventDefault();
+        useCarouselControl(0, 'previous', elements);
+        break;
+      case 'End':
+        event.preventDefault();
+        useCarouselControl(CONSOLES.length - 1, 'next', elements);
+        break;
+      default:
+        break;
+    }
+  });
+
+  elements.consoleCarousel.addEventListener('pointerenter', () => {
+    carouselPointerInside = true;
+    if (!carouselInteractionOverride) {
+      stopCarouselAutoplay();
+    }
+  });
+  elements.consoleCarousel.addEventListener('pointerleave', () => {
+    carouselPointerInside = false;
+    if (!carouselFocusInside) {
+      carouselInteractionOverride = false;
+    }
+    startCarouselAutoplay(elements);
+  });
+  elements.consoleCarousel.addEventListener('focusin', () => {
+    carouselFocusInside = true;
+    if (!carouselInteractionOverride) {
+      stopCarouselAutoplay();
+    }
+  });
+  elements.consoleCarousel.addEventListener('focusout', (event) => {
+    const nextTarget = event.relatedTarget;
+    if (nextTarget instanceof Node && elements.consoleCarousel.contains(nextTarget)) {
+      return;
+    }
+    carouselFocusInside = false;
+    if (!carouselPointerInside) {
+      carouselInteractionOverride = false;
+    }
+    startCarouselAutoplay(elements);
+  });
+
+  reducedMotionQuery.addEventListener('change', (event) => {
+    if (event.matches) {
+      carouselPaused = true;
+      carouselInteractionOverride = false;
+      updateCarouselToggle(elements);
+      stopCarouselAutoplay();
+    }
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      stopCarouselAutoplay();
+    } else {
+      startCarouselAutoplay(elements);
+    }
+  });
+  window.addEventListener('pagehide', () => {
+    stopCarouselAutoplay();
+    clearCarouselTransition(elements);
+  });
+  window.addEventListener('pageshow', () => {
+    startCarouselAutoplay(elements);
   });
 
   void getDebtSnapshot()
