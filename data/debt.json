@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 1,
+  "countries": [
+    {
+      "code": "USA",
+      "amountUsd": 39417905469064.21,
+      "asOf": "2026-07-13",
+      "source": {
+        "name": "U.S. Treasury Fiscal Data",
+        "dataset": "Debt to the Penny",
+        "url": "https://fiscaldata.treasury.gov/datasets/debt-to-the-penny/debt-to-the-penny"
+      },
+      "methodology": "Total public debt outstanding reported by the U.S. Treasury"
+    },
+    {
+      "code": "CHN",
+      "amountUsd": 22290352917000,
+      "asOf": "2026",
+      "debtToGdpPercent": 106.9,
+      "gdpUsd": 20851593000000,
+      "source": {
+        "name": "International Monetary Fund",
+        "dataset": "World Economic Outlook (April 2026)",
+        "url": "https://www.imf.org/external/datamapper/GGXWDG_NGDP@WEO/CHN"
+      },
+      "methodology": "GGXWDG_NGDP (% of GDP) multiplied by NGDPD (billions of U.S. dollars)"
+    },
+    {
+      "code": "JPN",
+      "amountUsd": 8951193132000,
+      "asOf": "2026",
+      "debtToGdpPercent": 204.4,
+      "gdpUsd": 4379253000000,
+      "source": {
+        "name": "International Monetary Fund",
+        "dataset": "World Economic Outlook (April 2026)",
+        "url": "https://www.imf.org/external/datamapper/GGXWDG_NGDP@WEO/JPN"
+      },
+      "methodology": "GGXWDG_NGDP (% of GDP) multiplied by NGDPD (billions of U.S. dollars)"
+    },
+    {
+      "code": "DEU",
+      "amountUsd": 3522546268000,
+      "asOf": "2026",
+      "debtToGdpPercent": 64.6,
+      "gdpUsd": 5452858000000,
+      "source": {
+        "name": "International Monetary Fund",
+        "dataset": "World Economic Outlook (April 2026)",
+        "url": "https://www.imf.org/external/datamapper/GGXWDG_NGDP@WEO/DEU"
+      },
+      "methodology": "GGXWDG_NGDP (% of GDP) multiplied by NGDPD (billions of U.S. dollars)"
+    },
+    {
+      "code": "RUS",
+      "amountUsd": 507382332000,
+      "asOf": "2026",
+      "debtToGdpPercent": 19.1,
+      "gdpUsd": 2656452000000,
+      "source": {
+        "name": "International Monetary Fund",
+        "dataset": "World Economic Outlook (April 2026)",
+        "url": "https://www.imf.org/external/datamapper/GGXWDG_NGDP@WEO/RUS"
+      },
+      "methodology": "GGXWDG_NGDP (% of GDP) multiplied by NGDPD (billions of U.S. dollars)"
+    },
+    {
+      "code": "AUS",
+      "amountUsd": 1074725278000,
+      "asOf": "2026",
+      "debtToGdpPercent": 50.6,
+      "gdpUsd": 2123963000000,
+      "source": {
+        "name": "International Monetary Fund",
+        "dataset": "World Economic Outlook (April 2026)",
+        "url": "https://www.imf.org/external/datamapper/GGXWDG_NGDP@WEO/AUS"
+      },
+      "methodology": "GGXWDG_NGDP (% of GDP) multiplied by NGDPD (billions of U.S. dollars)"
+    },
+    {
+      "code": "IND",
+      "amountUsd": 3463761294000,
+      "asOf": "2026",
+      "debtToGdpPercent": 83.4,
+      "gdpUsd": 4153191000000,
+      "source": {
+        "name": "International Monetary Fund",
+        "dataset": "World Economic Outlook (April 2026)",
+        "url": "https://www.imf.org/external/datamapper/GGXWDG_NGDP@WEO/IND"
+      },
+      "methodology": "GGXWDG_NGDP (% of GDP) multiplied by NGDPD (billions of U.S. dollars)"
+    },
+    {
+      "code": "CAN",
+      "amountUsd": 2775625380000,
+      "asOf": "2026",
+      "debtToGdpPercent": 110.7,
+      "gdpUsd": 2507340000000,
+      "source": {
+        "name": "International Monetary Fund",
+        "dataset": "World Economic Outlook (April 2026)",
+        "url": "https://www.imf.org/external/datamapper/GGXWDG_NGDP@WEO/CAN"
+      },
+      "methodology": "GGXWDG_NGDP (% of GDP) multiplied by NGDPD (billions of U.S. dollars)"
+    },
+    {
+      "code": "BRA",
+      "amountUsd": 2543655080000,
+      "asOf": "2026",
+      "debtToGdpPercent": 96.5,
+      "gdpUsd": 2635912000000,
+      "source": {
+        "name": "International Monetary Fund",
+        "dataset": "World Economic Outlook (April 2026)",
+        "url": "https://www.imf.org/external/datamapper/GGXWDG_NGDP@WEO/BRA"
+      },
+      "methodology": "GGXWDG_NGDP (% of GDP) multiplied by NGDPD (billions of U.S. dollars)"
+    },
+    {
+      "code": "ITA",
+      "amountUsd": 3789618976000,
+      "asOf": "2026",
+      "debtToGdpPercent": 138.4,
+      "gdpUsd": 2738164000000,
+      "source": {
+        "name": "International Monetary Fund",
+        "dataset": "World Economic Outlook (April 2026)",
+        "url": "https://www.imf.org/external/datamapper/GGXWDG_NGDP@WEO/ITA"
+      },
+      "methodology": "GGXWDG_NGDP (% of GDP) multiplied by NGDPD (billions of U.S. dollars)"
+    },
+    {
+      "code": "SLV",
+      "amountUsd": 33663110000,
+      "asOf": "2026",
+      "debtToGdpPercent": 84.5,
+      "gdpUsd": 39838000000,
+      "source": {
+        "name": "International Monetary Fund",
+        "dataset": "World Economic Outlook (April 2026)",
+        "url": "https://www.imf.org/external/datamapper/GGXWDG_NGDP@WEO/SLV"
+      },
+      "methodology": "GGXWDG_NGDP (% of GDP) multiplied by NGDPD (billions of U.S. dollars)"
+    }
+  ]
+}

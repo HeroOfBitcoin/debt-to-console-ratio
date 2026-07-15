@@ -1,13 +1,16 @@
-import { calculateBitcoinEquivalent, calculateConsoleEquivalent, calculateDebtFromGdp, findLatestCommonYear, parseCoinGeckoBitcoinPrice, parseTreasuryDebtResponse, parseWorldBankDebtSeries, parseWorldBankGdpSeries, } from './calculator.js';
+import { calculateBitcoinEquivalent, calculateConsoleEquivalent, parseCoinGeckoBitcoinPrice, parseDebtSnapshot, parseTreasuryDebtResponse, } from './calculator.js';
 import { CONSOLES, COUNTRIES, MAXIMUM_BITCOIN_SUPPLY, } from './data.js';
 const REQUEST_TIMEOUT_MS = 8000;
+const DEBT_SNAPSHOT_URL = 'data/debt.json';
 const TREASURY_DEBT_URL = 'https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v2/accounting/od/debt_to_penny?sort=-record_date&page[size]=1';
 const COINGECKO_PRICE_URL = 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_last_updated_at=true';
-const WORLD_BANK_DEBT_INDICATOR = 'GC.DOD.TOTL.GD.ZS';
-const WORLD_BANK_GDP_INDICATOR = 'NY.GDP.MKTP.CD';
-let activeRequestId = 0;
-let activeDebtController = null;
+let debtSnapshotPromise = null;
 let bitcoinPricePromise = null;
+let debtByCountry = new Map();
+let activeCountryCode = COUNTRIES[0].code;
+let activeSelectionId = 0;
+let activeRatioRenderId = 0;
+let activeTreasuryController = null;
 function isAbortError(error) {
     return error instanceof DOMException && error.name === 'AbortError';
 }
@@ -42,92 +45,19 @@ async function fetchJson(url, externalSignal) {
         externalSignal?.removeEventListener('abort', abortFromExternalSignal);
     }
 }
-function getWorldBankUrl(countryCode, indicator) {
-    return `https://api.worldbank.org/v2/country/${countryCode}/indicator/${indicator}?format=json&mrnev=10&per_page=100`;
-}
-async function fetchTreasuryDebt(country, signal) {
-    const payload = await fetchJson(TREASURY_DEBT_URL, signal);
-    const treasuryDebt = parseTreasuryDebtResponse(payload);
-    return {
-        amountUsd: treasuryDebt.amountUsd,
-        country,
-        status: 'live',
-        label: `${country.name} gross federal debt`,
-        sourceName: 'U.S. Treasury Fiscal Data',
-        sourceUrl: 'https://fiscaldata.treasury.gov/datasets/debt-to-the-penny/debt-to-the-penny',
-        dateLabel: treasuryDebt.date,
-        methodology: 'Reported total public debt outstanding',
-    };
-}
-async function fetchWorldBankDebt(country, signal) {
-    const [debtPayload, gdpPayload] = await Promise.all([
-        fetchJson(getWorldBankUrl(country.code, WORLD_BANK_DEBT_INDICATOR), signal),
-        fetchJson(getWorldBankUrl(country.code, WORLD_BANK_GDP_INDICATOR), signal),
-    ]);
-    const debtSeries = parseWorldBankDebtSeries(debtPayload);
-    const gdpSeries = parseWorldBankGdpSeries(gdpPayload);
-    const commonYear = findLatestCommonYear(debtSeries, gdpSeries);
-    return {
-        amountUsd: calculateDebtFromGdp(commonYear.gdpUsd, commonYear.debtToGdpPercent),
-        country,
-        status: 'live',
-        label: `${country.name} estimated central government debt`,
-        sourceName: 'World Bank Open Data',
-        sourceUrl: 'https://data.worldbank.org/indicator/GC.DOD.TOTL.GD.ZS',
-        dateLabel: String(commonYear.year),
-        methodology: 'Debt-to-GDP ratio multiplied by GDP for the same year',
-    };
-}
-function getCachedDebt(country) {
-    if (!country.cachedEstimate) {
-        return null;
+function getDebtSnapshot() {
+    if (!debtSnapshotPromise) {
+        const countryCodes = COUNTRIES.map((country) => country.code);
+        debtSnapshotPromise = fetchJson(DEBT_SNAPSHOT_URL)
+            .then((payload) => parseDebtSnapshot(payload, countryCodes));
     }
-    return {
-        amountUsd: calculateDebtFromGdp(country.cachedEstimate.gdpUsd, country.cachedEstimate.debtToGdpPercent),
-        country,
-        status: 'cached',
-        label: `${country.name} estimated government debt`,
-        sourceName: 'Cached estimate',
-        sourceUrl: null,
-        dateLabel: null,
-        methodology: 'Historical debt-to-GDP estimate multiplied by approximate GDP; no reference year',
-    };
-}
-async function loadDebt(country, signal) {
-    if (country.code === 'USA') {
-        try {
-            return await fetchTreasuryDebt(country, signal);
-        }
-        catch (error) {
-            if (isAbortError(error)) {
-                throw error;
-            }
-            console.warn('Treasury debt data is unavailable; trying World Bank data.', error);
-        }
-    }
-    try {
-        return await fetchWorldBankDebt(country, signal);
-    }
-    catch (error) {
-        if (isAbortError(error)) {
-            throw error;
-        }
-        const cachedDebt = getCachedDebt(country);
-        if (cachedDebt) {
-            console.warn('World Bank data is unavailable; using a clearly labelled cached estimate.', error);
-            return cachedDebt;
-        }
-        throw new Error(`No reliable debt data is available for ${country.name}`);
-    }
+    return debtSnapshotPromise;
 }
 function getBitcoinPrice() {
     if (!bitcoinPricePromise) {
         bitcoinPricePromise = fetchJson(COINGECKO_PRICE_URL)
             .then(parseCoinGeckoBitcoinPrice)
-            .catch((error) => {
-            console.warn('Bitcoin price is unavailable; no fallback price will be used.', error);
-            return null;
-        });
+            .catch(() => null);
     }
     return bitcoinPricePromise;
 }
@@ -161,6 +91,12 @@ function formatCompactUsd(value) {
 function formatCount(value, maximumFractionDigits = 0) {
     return new Intl.NumberFormat('en-US', { maximumFractionDigits }).format(value);
 }
+function formatCompactCount(value) {
+    return new Intl.NumberFormat('en-US', {
+        notation: 'compact',
+        maximumFractionDigits: 2,
+    }).format(value);
+}
 function formatDate(date) {
     return new Intl.DateTimeFormat('en-US', {
         year: 'numeric',
@@ -169,44 +105,57 @@ function formatDate(date) {
         timeZone: 'UTC',
     }).format(new Date(`${date}T00:00:00Z`));
 }
-function appendSourceMeta(container, debt) {
+function formatUnixDate(timestamp) {
+    return new Intl.DateTimeFormat('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        timeZone: 'UTC',
+    }).format(new Date(timestamp * 1000));
+}
+function getCountry(countryCode) {
+    const country = COUNTRIES.find((candidate) => candidate.code === countryCode);
+    if (!country) {
+        throw new Error(`Unknown country code ${countryCode}`);
+    }
+    return country;
+}
+function appendDebtMeta(container, debt) {
     clearElement(container);
-    if (debt.sourceUrl) {
-        const sourceLink = document.createElement('a');
-        sourceLink.href = debt.sourceUrl;
-        sourceLink.textContent = debt.sourceName;
-        container.appendChild(sourceLink);
-    }
-    else {
-        container.appendChild(document.createTextNode(debt.sourceName));
-    }
-    if (debt.dateLabel) {
-        const formattedDate = /^\d{4}$/.test(debt.dateLabel)
-            ? debt.dateLabel
-            : formatDate(debt.dateLabel);
-        container.appendChild(document.createTextNode(` · As of ${formattedDate}`));
-    }
-    container.appendChild(document.createTextNode(` · ${debt.methodology}`));
+    const sourceLink = document.createElement('a');
+    sourceLink.href = debt.source.url;
+    sourceLink.textContent = debt.code === 'USA' ? 'U.S. Treasury' : 'IMF WEO';
+    sourceLink.title = `${debt.source.name} · ${debt.source.dataset}`;
+    container.appendChild(sourceLink);
+    const dateLabel = /^\d{4}$/.test(debt.asOf)
+        ? `${debt.asOf} estimate`
+        : formatDate(debt.asOf);
+    container.appendChild(document.createTextNode(` · ${dateLabel}`));
 }
 function renderBitcoin(debtAmountUsd, bitcoinPrice, elements) {
     if (!bitcoinPrice) {
-        elements.bitcoinValue.textContent = 'Bitcoin price unavailable';
-        elements.bitcoinMeta.textContent = 'CoinGecko could not be reached. No fallback price was used.';
+        elements.bitcoinValue.textContent = 'Price unavailable';
+        elements.bitcoinValue.removeAttribute('aria-label');
+        elements.bitcoinMeta.textContent = 'CoinGecko';
         return;
     }
     const equivalent = calculateBitcoinEquivalent(debtAmountUsd, bitcoinPrice.priceUsd, MAXIMUM_BITCOIN_SUPPLY);
-    elements.bitcoinValue.textContent = `${formatCount(equivalent.bitcoin, 2)} BTC`;
+    elements.bitcoinValue.textContent = formatCompactCount(equivalent.bitcoin);
+    elements.bitcoinValue.setAttribute('aria-label', `${formatCount(equivalent.bitcoin, 2)} BTC`);
     const updated = bitcoinPrice.lastUpdatedAt === null
         ? ''
-        : ` · Price updated ${new Intl.DateTimeFormat('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-        }).format(new Date(bitcoinPrice.lastUpdatedAt * 1000))}`;
+        : ` · ${formatUnixDate(bitcoinPrice.lastUpdatedAt)}`;
     elements.bitcoinMeta.textContent =
-        `${formatCount(equivalent.percentageOfMaximumSupply, 4)}% of Bitcoin's ` +
-            `${formatCount(MAXIMUM_BITCOIN_SUPPLY)} maximum supply · ` +
-            `${formatUsd(bitcoinPrice.priceUsd)} per BTC · CoinGecko${updated}`;
+        `${formatUsd(bitcoinPrice.priceUsd)} per BTC · CoinGecko${updated}`;
+}
+function renderFeaturedConsole(debtAmountUsd, elements) {
+    const featuredConsole = CONSOLES[0];
+    const equivalent = calculateConsoleEquivalent(debtAmountUsd, featuredConsole.referencePriceUsd);
+    elements.featuredConsoleName.textContent = featuredConsole.id === 'game-boy'
+        ? 'Game Boys'
+        : featuredConsole.name;
+    elements.featuredConsoleValue.textContent = formatCompactCount(equivalent);
+    elements.featuredConsoleValue.setAttribute('aria-label', `${formatCount(equivalent)} ${featuredConsole.name} consoles`);
 }
 function renderConsoles(debtAmountUsd, elements) {
     clearElement(elements.consoleList);
@@ -218,8 +167,9 @@ function renderConsoles(debtAmountUsd, elements) {
         image.alt = '';
         image.className = 'console-image';
         image.loading = 'lazy';
-        image.width = 96;
-        image.height = 72;
+        image.decoding = 'async';
+        image.width = consoleReference.imageWidth;
+        image.height = consoleReference.imageHeight;
         const copy = document.createElement('div');
         copy.className = 'console-copy';
         const name = document.createElement('h3');
@@ -227,104 +177,110 @@ function renderConsoles(debtAmountUsd, elements) {
         name.textContent = consoleReference.name;
         const count = document.createElement('p');
         count.className = 'console-count';
-        count.textContent = `${formatCount(calculateConsoleEquivalent(debtAmountUsd, consoleReference.referencePriceUsd))} consoles`;
+        const equivalent = calculateConsoleEquivalent(debtAmountUsd, consoleReference.referencePriceUsd);
+        count.textContent = formatCompactCount(equivalent);
+        count.setAttribute('aria-label', `${formatCount(equivalent)} ${consoleReference.name} consoles`);
         const note = document.createElement('small');
         note.className = 'console-price';
-        note.textContent = `Illustrative reference price: ${formatUsd(consoleReference.referencePriceUsd)}`;
+        note.textContent = `Reference price: ${formatUsd(consoleReference.referencePriceUsd)}`;
         copy.append(name, count, note);
         item.append(image, copy);
         elements.consoleList.appendChild(item);
     }
 }
-function renderDebt(debt, bitcoinPrice, elements) {
-    elements.debtLabel.textContent = debt.label;
+function renderDebt(debt, country, selectionId, elements) {
+    const ratioRenderId = ++activeRatioRenderId;
+    elements.debtLabel.textContent = country.code === 'USA'
+        ? `${country.name} national debt`
+        : `${country.name} general government gross debt`;
     elements.debtValue.textContent = formatCompactUsd(debt.amountUsd);
-    appendSourceMeta(elements.debtMeta, debt);
-    renderBitcoin(debt.amountUsd, bitcoinPrice, elements);
+    appendDebtMeta(elements.debtMeta, debt);
+    renderFeaturedConsole(debt.amountUsd, elements);
     renderConsoles(debt.amountUsd, elements);
     elements.status.classList.remove('is-loading', 'is-error');
-    elements.status.dataset.state = debt.status === 'cached' ? 'cached' : 'ready';
-    elements.status.textContent = debt.status === 'cached'
-        ? `Showing a cached estimate for ${debt.country.name}.`
-        : `Showing the latest available data for ${debt.country.name}.`;
+    elements.status.dataset.state = 'ready';
+    elements.status.textContent = `${country.name} ratios ready.`;
+    elements.bitcoinValue.textContent = 'Loading…';
+    elements.bitcoinValue.removeAttribute('aria-label');
+    elements.bitcoinMeta.textContent = 'CoinGecko';
+    void getBitcoinPrice().then((bitcoinPrice) => {
+        if (selectionId !== activeSelectionId
+            || ratioRenderId !== activeRatioRenderId
+            || country.code !== activeCountryCode) {
+            return;
+        }
+        renderBitcoin(debt.amountUsd, bitcoinPrice, elements);
+    });
 }
-function setLoadingState(country, elements) {
-    elements.status.classList.remove('is-error');
-    elements.status.classList.add('is-loading');
-    elements.status.dataset.state = 'loading';
-    elements.status.textContent = `Loading debt data for ${country.name}…`;
-    elements.debtLabel.textContent = `${country.name} debt`;
-    elements.debtValue.textContent = '—';
-    elements.debtMeta.textContent = 'Checking official data sources…';
-    elements.bitcoinValue.textContent = '—';
-    elements.bitcoinMeta.textContent = 'Loading Bitcoin price…';
-    clearElement(elements.consoleList);
-}
-function setErrorState(country, elements) {
+function setPackagedDataError(elements) {
+    elements.countrySelection.disabled = true;
     elements.status.classList.remove('is-loading');
     elements.status.classList.add('is-error');
     elements.status.dataset.state = 'error';
-    elements.status.textContent = `${country.name} debt data is currently unavailable. Try again later.`;
-    elements.debtLabel.textContent = `${country.name} debt unavailable`;
+    elements.status.textContent = 'Debt data could not be loaded. Please try again later.';
+    elements.debtLabel.textContent = 'Debt data unavailable';
     elements.debtValue.textContent = '—';
-    elements.debtMeta.textContent = 'No official data or clearly identified cached estimate is available.';
+    elements.debtMeta.textContent = 'The packaged Treasury and IMF dataset is unavailable.';
+    elements.featuredConsoleValue.textContent = '—';
+    elements.featuredConsoleValue.removeAttribute('aria-label');
     elements.bitcoinValue.textContent = '—';
-    elements.bitcoinMeta.textContent = 'A debt amount is required for this comparison.';
+    elements.bitcoinValue.removeAttribute('aria-label');
+    elements.bitcoinMeta.textContent = '';
     clearElement(elements.consoleList);
 }
-function setSelectedCountry(countryCode, elements) {
-    const buttons = elements.countrySelection.querySelectorAll('.country-button');
-    buttons.forEach((button) => {
-        button.setAttribute('aria-pressed', String(button.dataset.country === countryCode));
-    });
-}
-async function selectCountry(country, elements) {
-    activeDebtController?.abort();
+async function refreshUnitedStatesDebt(snapshotDebt, country, selectionId, elements) {
     const controller = new AbortController();
-    activeDebtController = controller;
-    const requestId = ++activeRequestId;
-    setSelectedCountry(country.code, elements);
-    setLoadingState(country, elements);
+    activeTreasuryController = controller;
     try {
-        const [debt, bitcoinPrice] = await Promise.all([
-            loadDebt(country, controller.signal),
-            getBitcoinPrice(),
-        ]);
-        if (requestId !== activeRequestId || controller.signal.aborted) {
+        const payload = await fetchJson(TREASURY_DEBT_URL, controller.signal);
+        const treasuryDebt = parseTreasuryDebtResponse(payload);
+        if (selectionId !== activeSelectionId
+            || controller.signal.aborted
+            || activeCountryCode !== 'USA'
+            || treasuryDebt.date < snapshotDebt.asOf) {
             return;
         }
-        renderDebt(debt, bitcoinPrice, elements);
+        renderDebt({
+            ...snapshotDebt,
+            amountUsd: treasuryDebt.amountUsd,
+            asOf: treasuryDebt.date,
+        }, country, selectionId, elements);
     }
-    catch (error) {
-        if (isAbortError(error) || requestId !== activeRequestId) {
-            return;
+    catch (_error) {
+        // The validated Treasury snapshot remains on screen when a live refresh is unavailable.
+    }
+    finally {
+        if (activeTreasuryController === controller) {
+            activeTreasuryController = null;
         }
-        console.warn(`Unable to load debt data for ${country.name}.`, error);
-        setErrorState(country, elements);
     }
 }
-function renderCountryButtons(elements) {
+function selectCountry(countryCode, elements) {
+    const debt = debtByCountry.get(countryCode);
+    if (!debt) {
+        setPackagedDataError(elements);
+        return;
+    }
+    activeTreasuryController?.abort();
+    activeTreasuryController = null;
+    activeCountryCode = countryCode;
+    const selectionId = ++activeSelectionId;
+    const country = getCountry(countryCode);
+    elements.countrySelection.value = countryCode;
+    renderDebt(debt, country, selectionId, elements);
+    if (countryCode === 'USA') {
+        void refreshUnitedStatesDebt(debt, country, selectionId, elements);
+    }
+}
+function renderCountryOptions(elements) {
     clearElement(elements.countrySelection);
     for (const country of COUNTRIES) {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'country-button';
-        button.dataset.country = country.code;
-        button.setAttribute('aria-pressed', 'false');
-        button.setAttribute('aria-label', `Show debt estimate for ${country.name}`);
-        const flag = document.createElement('span');
-        flag.className = 'country-flag';
-        flag.setAttribute('aria-hidden', 'true');
-        flag.textContent = country.flag;
-        const name = document.createElement('span');
-        name.className = 'country-name';
-        name.textContent = country.name;
-        button.append(flag, name);
-        button.addEventListener('click', () => {
-            void selectCountry(country, elements);
-        });
-        elements.countrySelection.appendChild(button);
+        const option = document.createElement('option');
+        option.value = country.code;
+        option.textContent = country.name;
+        elements.countrySelection.appendChild(option);
     }
+    elements.countrySelection.value = activeCountryCode;
 }
 function initializeApp() {
     const elements = {
@@ -333,6 +289,8 @@ function initializeApp() {
         debtLabel: requiredElement('debt-label'),
         debtValue: requiredElement('debt-value'),
         debtMeta: requiredElement('debt-meta'),
+        featuredConsoleName: requiredElement('featured-console-name'),
+        featuredConsoleValue: requiredElement('featured-console-value'),
         bitcoinValue: requiredElement('bitcoin-value'),
         bitcoinMeta: requiredElement('bitcoin-meta'),
         consoleList: requiredElement('console-list'),
@@ -341,7 +299,24 @@ function initializeApp() {
     const heroConsole = CONSOLES[0];
     elements.heroConsoleImage.src = heroConsole.imagePath;
     elements.heroConsoleImage.alt = `${heroConsole.name} console`;
-    renderCountryButtons(elements);
-    void selectCountry(COUNTRIES[0], elements);
+    elements.heroConsoleImage.width = heroConsole.imageWidth;
+    elements.heroConsoleImage.height = heroConsole.imageHeight;
+    elements.countrySelection.disabled = true;
+    renderCountryOptions(elements);
+    elements.countrySelection.addEventListener('change', () => {
+        const country = COUNTRIES.find((candidate) => candidate.code === elements.countrySelection.value);
+        if (country) {
+            selectCountry(country.code, elements);
+        }
+    });
+    void getDebtSnapshot()
+        .then((snapshot) => {
+        debtByCountry = new Map(snapshot.countries.map((entry) => [entry.code, entry]));
+        elements.countrySelection.disabled = false;
+        selectCountry(activeCountryCode, elements);
+    })
+        .catch(() => {
+        setPackagedDataError(elements);
+    });
 }
 window.addEventListener('DOMContentLoaded', initializeApp);
