@@ -60,9 +60,12 @@ a {
 h1,
 h2,
 h3,
-p,
-figure {
+p {
   margin-top: 0;
+}
+
+figure {
+  margin: 0;
 }
 
 h1,
@@ -111,10 +114,9 @@ h2 {
 }
 
 .site-header__inner {
-  width: min(100%, var(--max-width));
   min-width: 0;
   margin-inline: auto;
-  padding: 0.45rem var(--gutter);
+  padding: 0.45rem 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -184,16 +186,17 @@ h2 {
 }
 
 .hero-stage {
-  padding: clamp(1rem, 2.5vw, 2rem) var(--gutter) clamp(2.25rem, 5vw, 4.5rem);
+  padding: clamp(1rem, 2.5vw, 2rem) 0 clamp(2.25rem, 5vw, 4.5rem);
   border-bottom: 4px solid var(--ink);
   background: var(--orange);
 }
 
+.site-header__inner,
 .hero-stage__inner,
 .console-section,
 .final-cta__inner,
 .site-footer__inner {
-  width: min(100%, var(--max-width));
+  width: min(calc(100% - var(--gutter) - var(--gutter)), var(--max-width));
   min-width: 0;
   margin-inline: auto;
 }
@@ -204,7 +207,6 @@ h2 {
   align-items: end;
   justify-content: space-between;
   gap: 1.5rem 3rem;
-  animation: rise-in 360ms ease-out both;
 }
 
 .eyebrow,
@@ -371,7 +373,7 @@ h2 {
 .hero-workspace {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1.7fr) minmax(19rem, 0.72fr);
+  grid-template-columns: minmax(0, 1.82fr) minmax(18rem, 0.64fr);
   border: 4px solid var(--ink);
   background: var(--paper);
   box-shadow: 9px 9px 0 var(--ink);
@@ -380,9 +382,9 @@ h2 {
 
 .featured-ratio {
   min-width: 0;
-  min-height: 24rem;
+  min-height: 27rem;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(15rem, 0.9fr);
+  grid-template-columns: minmax(0, 0.82fr) minmax(18rem, 1.18fr);
   align-items: center;
   background: var(--cream);
 }
@@ -417,9 +419,9 @@ h2 {
 
 .hero-console {
   min-width: 0;
-  min-height: 100%;
-  margin-bottom: 0;
-  padding: clamp(1rem, 2vw, 2rem);
+  min-height: 0;
+  align-self: stretch;
+  padding: clamp(0.75rem, 1.5vw, 1.25rem);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -429,12 +431,11 @@ h2 {
 }
 
 #hero-console-image {
-  width: min(100%, 24rem);
+  width: min(100%, 26rem);
   height: auto;
-  max-height: 25rem;
+  max-height: 29rem;
   object-fit: contain;
   filter: drop-shadow(0.65rem 0.8rem 0 rgba(9, 9, 9, 0.22));
-  animation: console-in 480ms 80ms ease-out both;
 }
 
 .bitcoin-ratio {
@@ -492,12 +493,12 @@ h2 {
 }
 
 .console-section {
-  padding: clamp(3.5rem, 7vw, 6.5rem) var(--gutter);
+  padding-block: clamp(2.5rem, 5vw, 4.5rem);
 }
 
 .section-heading {
-  max-width: 60rem;
-  margin-bottom: clamp(2.25rem, 5vw, 4rem);
+  width: 100%;
+  margin-bottom: clamp(1.75rem, 3.5vw, 2.75rem);
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
@@ -531,12 +532,12 @@ h2 {
 
 .console-row {
   min-width: 0;
-  min-height: 18rem;
+  min-height: 15rem;
   display: grid;
   grid-template-columns: minmax(13rem, 22rem) minmax(0, 1fr);
   align-items: center;
   gap: clamp(1.5rem, 7vw, 6rem);
-  padding: clamp(1.5rem, 3.5vw, 3rem) clamp(0.25rem, 2vw, 1.5rem);
+  padding: clamp(1.25rem, 2.5vw, 2.25rem) clamp(0.25rem, 2vw, 1.5rem);
   border-bottom: 4px solid var(--ink);
 }
 
@@ -615,7 +616,7 @@ h2 {
 }
 
 .final-cta {
-  padding: clamp(1.75rem, 4vw, 3rem) var(--gutter);
+  padding: clamp(1.75rem, 4vw, 3rem) 0;
   border-block: 4px solid var(--ink);
   background: var(--ink);
   color: var(--cream);
@@ -656,7 +657,7 @@ h2 {
 }
 
 .site-footer__inner {
-  padding: 1rem var(--gutter) 1.4rem;
+  padding: 1rem 0 1.4rem;
   display: flex;
   justify-content: space-between;
   gap: 0.75rem 2rem;
@@ -665,30 +666,6 @@ h2 {
 
 .site-footer p {
   margin-bottom: 0;
-}
-
-@keyframes rise-in {
-  from {
-    opacity: 0;
-    transform: translateY(0.75rem);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes console-in {
-  from {
-    opacity: 0;
-    transform: translateY(1rem) rotate(-2deg);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0) rotate(0);
-  }
 }
 
 @keyframes blink {
@@ -734,7 +711,7 @@ h2 {
   }
 
   .featured-ratio {
-    grid-template-columns: minmax(0, 1fr) minmax(12rem, 0.8fr);
+    grid-template-columns: minmax(0, 0.9fr) minmax(17rem, 1.1fr);
   }
 
   .section-heading {
@@ -784,7 +761,7 @@ h2 {
   }
 
   .debt-toolbar {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
   }
 
   .debt-display,
@@ -825,14 +802,14 @@ h2 {
   }
 
   .hero-console {
-    min-height: 19rem;
+    padding: 1rem;
     border-top: 4px solid var(--ink);
     border-left: 0;
   }
 
   #hero-console-image {
-    width: min(100%, 15.5rem);
-    max-height: 17rem;
+    width: min(100%, 18rem);
+    max-height: 22rem;
   }
 
   .bitcoin-ratio {
@@ -860,7 +837,7 @@ h2 {
     min-height: 0;
     grid-template-columns: minmax(0, 1fr);
     gap: 1.25rem;
-    padding-block: 2.25rem;
+    padding-block: 1.75rem;
   }
 
   .console-row:nth-child(even) .console-image,
@@ -903,6 +880,15 @@ h2 {
 }
 
 @media (max-width: 22rem) {
+  .debt-toolbar {
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  }
+
+  .country-selection {
+    padding-right: 1.25rem;
+    padding-left: 0.4rem;
+  }
+
   .brand-link img {
     width: 5.9rem;
   }
