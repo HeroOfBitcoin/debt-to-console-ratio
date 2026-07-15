@@ -1,14 +1,27 @@
 {
-  "name": "retro-national-debt-calculator",
+  "name": "debt-to-console-ratio",
   "version": "1.0.0",
-  "description": "A national debt calculator that converts debt into retro console equivalents.",
-  "main": "dist/app.js",
+  "private": true,
+  "description": "Compare national debt estimates with Bitcoin and classic game console prices.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HeroOfBitcoin/debt-to-console-ratio.git"
+  },
+  "homepage": "https://heroofbitcoin.github.io/debt-to-console-ratio/",
   "scripts": {
-    "build": "npx tsc",
+    "prebuild": "node scripts/prepare-dist.mjs",
+    "build": "tsc",
+    "postbuild": "node scripts/copy-public.mjs",
+    "test": "npm run build && node --test tests/*.test.mjs",
+    "predeploy": "npm test",
     "deploy": "gh-pages -d dist"
   },
+  "engines": {
+    "node": ">=20"
+  },
   "devDependencies": {
-    "gh-pages": "^6.1.1",
-    "typescript": "^4.4.4"
+    "gh-pages": "^6.3.0",
+    "typescript": "^4.9.5"
   }
 }
