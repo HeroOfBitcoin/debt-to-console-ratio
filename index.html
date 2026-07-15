@@ -79,8 +79,10 @@
               <p class="score-kicker">National debt</p>
               <h1 id="debt-label">United States national debt</h1>
             </div>
-            <p id="debt-value" class="debt-value">Loading…</p>
-            <p id="debt-meta" class="debt-meta"></p>
+            <div class="debt-score__metric">
+              <p id="debt-value" class="debt-value">Loading…</p>
+              <p id="debt-meta" class="debt-meta"></p>
+            </div>
           </div>
 
           <div
@@ -165,6 +167,39 @@
         </div>
       </section>
     </main>
+
+    <footer class="site-footer" aria-label="Project information">
+      <div class="site-footer__inner">
+        <div class="footer-project">
+          <p>
+            Debt to Console Ratio is a
+            <a href="https://heroofbitcoin.xyz/">Hero of Bitcoin</a> side project.
+          </p>
+          <nav class="footer-links" aria-label="More Hero of Bitcoin links">
+            <a href="https://heroofbitcoin.xyz/">Shop</a>
+            <a
+              href="https://demo.heroofbitcoin.xyz"
+              target="_blank"
+              rel="noopener noreferrer"
+            >Play demo</a>
+          </nav>
+        </div>
+
+        <p class="footer-method">
+          <strong>Method</strong>
+          U.S. Treasury for the U.S.; IMF WEO debt-to-GDP × nominal GDP elsewhere.
+          Fixed USD console reference prices; Bitcoin uses CoinGecko’s USD price.
+        </p>
+
+        <div class="footer-notes">
+          <p>For perspective, not financial or economic analysis.</p>
+          <p>
+            Console names and images belong to their respective owners and are used for
+            identification.
+          </p>
+        </div>
+      </div>
+    </footer>
 
     <script type="module" src="app.js"></script>
   </body>
