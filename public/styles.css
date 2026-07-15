@@ -128,7 +128,8 @@ figure {
 }
 
 .site-header__inner,
-.arcade-stage__inner {
+.arcade-stage__inner,
+.site-footer__inner {
   width: min(calc(100% - var(--gutter) - var(--gutter)), var(--max-width));
   min-width: 0;
   margin-inline: auto;
@@ -336,6 +337,15 @@ main {
   grid-row: 1 / -1;
 }
 
+.debt-score__metric {
+  min-width: 0;
+  grid-row: 1 / -1;
+  align-self: center;
+  display: grid;
+  gap: clamp(0.45rem, 0.9vh, 0.65rem);
+  padding-block: 0.2rem;
+}
+
 .score-kicker {
   margin-bottom: 0.45rem;
   color: var(--orange-text);
@@ -359,11 +369,10 @@ main {
 }
 
 .debt-value {
-  align-self: end;
   font-size: clamp(3.7rem, 6.1vw, 5.75rem);
   font-weight: 700;
   letter-spacing: -0.075em;
-  line-height: 0.78;
+  line-height: 0.88;
 }
 
 .debt-meta,
@@ -470,10 +479,9 @@ main {
 }
 
 #hero-console-image {
-  width: auto;
-  height: min(36vh, 19rem);
-  max-width: 100%;
-  max-height: 100%;
+  width: min(76%, 24rem);
+  height: auto;
+  max-height: min(36vh, 19rem);
   object-fit: contain;
   filter: drop-shadow(0.7rem 0.8rem 0 rgba(9, 9, 9, 0.25));
   image-rendering: crisp-edges;
@@ -577,6 +585,53 @@ main {
   box-shadow: 4px 4px 0 var(--ink);
 }
 
+.site-footer {
+  min-width: 0;
+  border-top: 4px solid var(--ink);
+  background: var(--ink);
+  color: var(--cream);
+}
+
+.site-footer__inner {
+  padding-block: 0.65rem 0.75rem;
+  display: grid;
+  grid-template-columns: minmax(13rem, 0.8fr) minmax(27rem, 1.65fr) minmax(17rem, 1fr);
+  align-items: start;
+  gap: 0.65rem clamp(1rem, 2vw, 1.75rem);
+  font-size: 0.625rem;
+  line-height: 1.45;
+}
+
+.site-footer p {
+  min-width: 0;
+}
+
+.site-footer a {
+  color: var(--yellow);
+  font-weight: 700;
+  text-decoration-thickness: 0.12em;
+  text-underline-offset: 0.2em;
+}
+
+.footer-project,
+.footer-notes {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.8rem;
+  text-transform: uppercase;
+}
+
+.footer-method strong {
+  margin-right: 0.3rem;
+  color: var(--orange);
+  text-transform: uppercase;
+}
+
 .console-carousel.is-transitioning .console-visual,
 .console-carousel.is-transitioning .ratio-readout > * {
   animation: pixel-shift 180ms steps(4, end);
@@ -613,11 +668,11 @@ main {
   }
 }
 
-@media (min-width: 64.0625rem) and (min-height: 45rem) {
+@media (min-width: 64.0625rem) and (min-height: 43.5rem) {
   body {
     height: 100svh;
     display: grid;
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
   }
 
   main {
@@ -671,6 +726,15 @@ main {
 
   .bitcoin-readout h2 {
     margin-bottom: 0.55rem;
+  }
+
+  .site-footer__inner {
+    grid-template-columns: minmax(13rem, 0.8fr) minmax(0, 1.6fr);
+  }
+
+  .footer-notes {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -742,12 +806,18 @@ main {
   .debt-score {
     padding: 0.85rem;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto auto;
     gap: 0.45rem;
   }
 
   .debt-score__label {
     grid-row: auto;
+  }
+
+  .debt-score__metric {
+    grid-row: auto;
+    gap: 0.4rem;
+    padding-block: 0;
   }
 
   .score-kicker {
@@ -811,6 +881,15 @@ main {
 
   .bitcoin-value {
     font-size: clamp(2.25rem, 11vw, 3.25rem);
+  }
+
+  .site-footer__inner,
+  .footer-notes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .footer-notes {
+    grid-column: auto;
   }
 }
 
