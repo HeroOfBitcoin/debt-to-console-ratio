@@ -7,7 +7,7 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self' https://api.fiscaldata.treasury.gov https://api.coingecko.com; object-src 'none'; base-uri 'none'; form-action 'none'; upgrade-insecure-requests"
     />
-    <meta name="theme-color" content="#f7931a" />
+    <meta name="theme-color" content="#ffd21c" />
 
     <title>Debt to Console Ratio — Hero of Bitcoin</title>
     <meta
@@ -23,7 +23,7 @@
     <meta property="og:title" content="Debt to Console Ratio — Hero of Bitcoin" />
     <meta
       property="og:description"
-      content="The U.S. national debt translated into Bitcoin and retro console equivalents."
+      content="The U.S. national debt measured in Bitcoin and retro console equivalents."
     />
     <meta property="og:url" content="https://heroofbitcoin.github.io/debt-to-console-ratio/" />
 
@@ -31,7 +31,7 @@
     <meta name="twitter:title" content="Debt to Console Ratio — Hero of Bitcoin" />
     <meta
       name="twitter:description"
-      content="The U.S. national debt translated into Bitcoin and retro console equivalents."
+      content="The U.S. national debt measured in Bitcoin and retro console equivalents."
     />
 
     <link rel="stylesheet" href="styles.css" />
@@ -41,7 +41,7 @@
 
     <header class="site-header">
       <div class="site-header__inner">
-        <a class="brand-link" href="https://heroofbitcoin.xyz/" aria-label="Hero of Bitcoin home">
+        <a class="brand-link" href="https://heroofbitcoin.xyz/" aria-label="Hero of Bitcoin shop">
           <img src="images/hero.png" alt="Hero of Bitcoin" width="152" height="80" />
         </a>
 
@@ -54,70 +54,100 @@
             rel="noopener noreferrer"
           >Play demo</a>
         </nav>
+
+        <div class="country-picker">
+          <label class="country-label" for="country-selection">Country</label>
+          <select id="country-selection" class="country-selection" aria-label="Country">
+            <option value="USA" selected>United States</option>
+          </select>
+          <p
+            id="status"
+            class="status is-loading"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          >Loading debt data…</p>
+        </div>
       </div>
     </header>
 
     <main id="main-content">
-      <section class="hero-stage" aria-labelledby="page-title">
-        <div class="hero-stage__inner">
-          <div class="hero-intro">
-            <div>
-              <p class="eyebrow">A Hero of Bitcoin side quest</p>
-              <h1 id="page-title">Debt to Console Ratio</h1>
+      <section class="arcade-stage" aria-labelledby="debt-label">
+        <div class="arcade-stage__inner">
+          <div class="debt-score">
+            <div class="debt-score__label">
+              <p class="score-kicker">National debt</p>
+              <h1 id="debt-label">United States national debt</h1>
             </div>
-            <p class="hero-copy">The national debt, translated into hardware you can picture.</p>
+            <p id="debt-value" class="debt-value">Loading…</p>
+            <p id="debt-meta" class="debt-meta"></p>
           </div>
 
-          <div class="debt-toolbar">
-            <div class="debt-display">
-              <p id="debt-label" class="metric-label">United States national debt</p>
-              <p id="debt-value" class="debt-value">Loading…</p>
-              <p id="debt-meta" class="metric-meta"></p>
-            </div>
+          <div
+            id="console-carousel"
+            class="console-carousel"
+            role="region"
+            aria-roledescription="carousel"
+            aria-label="Console debt comparisons"
+            tabindex="0"
+          >
+            <article
+              id="carousel-slide"
+              class="ratio-readout"
+              role="group"
+              aria-roledescription="slide"
+              aria-labelledby="featured-console-name"
+            >
+              <p class="ratio-kicker">Measured in</p>
+              <h2 id="featured-console-name">Game Boys</h2>
+              <p id="featured-console-value" class="featured-console-value">Loading…</p>
+              <p id="featured-console-price" class="featured-console-price">$100 each</p>
+            </article>
 
-            <div class="country-picker">
-              <label class="country-label" for="country-selection">Country</label>
-              <select id="country-selection" class="country-selection" aria-label="Country">
-                <option value="USA" selected>United States</option>
-              </select>
-              <p
-                id="status"
-                class="status is-loading"
-                role="status"
-                aria-live="polite"
-                aria-atomic="true"
-              >Loading debt data…</p>
-            </div>
-          </div>
-
-          <div class="hero-workspace">
-            <article class="featured-ratio" aria-labelledby="featured-console-name">
-              <div class="featured-ratio__copy">
-                <p class="ratio-kicker">Measured in</p>
-                <h2 id="featured-console-name">Game Boys</h2>
-                <p id="featured-console-value" class="featured-console-value">Loading…</p>
-              </div>
-
-              <figure class="hero-console">
+            <div class="console-view">
+              <figure class="console-visual">
                 <img
                   id="hero-console-image"
                   src="images/gameboy.png"
-                  alt="Game Boy console"
-                  width="640"
-                  height="776"
+                  alt=""
+                  width="184"
+                  height="224"
                   decoding="async"
                   fetchpriority="high"
                 />
               </figure>
-            </article>
 
-            <article class="bitcoin-ratio" aria-labelledby="bitcoin-title">
+              <div class="carousel-controls" role="group" aria-label="Console carousel controls">
+                <button
+                  id="carousel-previous"
+                  class="carousel-button carousel-button--arrow"
+                  type="button"
+                  aria-label="Previous console"
+                >←</button>
+                <span id="carousel-position" class="carousel-position" aria-hidden="true">01 / 08</span>
+                <button
+                  id="carousel-toggle"
+                  class="carousel-button carousel-button--toggle"
+                  type="button"
+                  aria-label="Pause automatic console rotation"
+                >Pause</button>
+                <button
+                  id="carousel-next"
+                  class="carousel-button carousel-button--arrow"
+                  type="button"
+                  aria-label="Next console"
+                >→</button>
+              </div>
+              <p id="carousel-announcement" class="sr-only" aria-live="polite" aria-atomic="true"></p>
+            </div>
+
+            <article class="bitcoin-readout" aria-labelledby="bitcoin-title">
               <img
                 class="bitcoin-mark"
                 src="images/bitcoin.png"
                 alt=""
-                width="1200"
-                height="1200"
+                width="512"
+                height="512"
                 decoding="async"
               />
               <div class="bitcoin-copy">
@@ -134,41 +164,7 @@
           </noscript>
         </div>
       </section>
-
-      <section class="console-section" aria-labelledby="console-title">
-        <div class="section-heading">
-          <p class="eyebrow">Full lineup</p>
-          <h2 id="console-title">Measured in consoles</h2>
-          <p>One debt figure. Eight retro price tags.</p>
-        </div>
-        <ul id="console-list" class="console-list" aria-label="Console comparisons"></ul>
-        <p class="method-line">
-          Console prices are fixed references. Debt and Bitcoin sources appear beside each result.
-        </p>
-      </section>
-
-      <section class="final-cta" aria-label="Hero of Bitcoin links">
-        <div class="final-cta__inner">
-          <p><strong>Hero of Bitcoin</strong> — stack sats, save the future.</p>
-          <div class="final-cta__actions">
-            <a class="button-link button-link--primary" href="https://heroofbitcoin.xyz/">Shop</a>
-            <a
-              class="button-link button-link--secondary"
-              href="https://demo.heroofbitcoin.xyz"
-              target="_blank"
-              rel="noopener noreferrer"
-            >Play demo</a>
-          </div>
-        </div>
-      </section>
     </main>
-
-    <footer class="site-footer">
-      <div class="site-footer__inner">
-        <p>Debt to Console Ratio is a Hero of Bitcoin side project.</p>
-        <p>Console names and images are used for identification.</p>
-      </div>
-    </footer>
 
     <script type="module" src="app.js"></script>
   </body>
