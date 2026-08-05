@@ -26,12 +26,12 @@ Country definitions, reporting dates, IMF estimates, exchange rates, and console
 Node.js 20 or newer is required.
 
 ```bash
-npm install
-npm test
+npm ci
+npm run verify
 python3 -m http.server 8080 --directory dist
 ```
 
-Open <http://127.0.0.1:8080>. `npm test` creates a clean build in `dist/` before running the test suite.
+Open <http://127.0.0.1:8080>. `npm run verify` creates a clean build in `dist/` before running the test suite.
 
 ## Deployment
 
