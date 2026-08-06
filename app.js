@@ -1,8 +1,7 @@
-import { calculateBitcoinEquivalent, calculateConsoleEquivalent, parseCoinGeckoBitcoinPrice, parseDebtSnapshot, parseTreasuryDebtResponse, } from './calculator.js';
+import { calculateBitcoinEquivalent, calculateConsoleEquivalent, parseCoinGeckoBitcoinPrice, parseDebtSnapshot, } from './calculator.js';
 import { CONSOLES, COUNTRIES, MAXIMUM_BITCOIN_SUPPLY, } from './data.js';
 const REQUEST_TIMEOUT_MS = 8000;
 const DEBT_SNAPSHOT_URL = 'data/debt.json';
-const TREASURY_DEBT_URL = 'https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v2/accounting/od/debt_to_penny?sort=-record_date&page[size]=1';
 const COINGECKO_PRICE_URL = 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_last_updated_at=true';
 const CAROUSEL_AUTOPLAY_MS = 6500;
 const CAROUSEL_TRANSITION_MS = 320;
@@ -14,7 +13,6 @@ let activeConsoleIndex = 0;
 let activeDebtAmountUsd = null;
 let activeSelectionId = 0;
 let activeRatioRenderId = 0;
-let activeTreasuryController = null;
 let carouselAutoplayId = null;
 let carouselTransitionId = null;
 let carouselPaused = true;
@@ -320,49 +318,17 @@ function setPackagedDataError(elements) {
     elements.bitcoinValue.removeAttribute('aria-label');
     elements.bitcoinMeta.textContent = '';
 }
-async function refreshUnitedStatesDebt(snapshotDebt, country, selectionId, elements) {
-    const controller = new AbortController();
-    activeTreasuryController = controller;
-    try {
-        const payload = await fetchJson(TREASURY_DEBT_URL, controller.signal);
-        const treasuryDebt = parseTreasuryDebtResponse(payload);
-        if (selectionId !== activeSelectionId
-            || controller.signal.aborted
-            || activeCountryCode !== 'USA'
-            || treasuryDebt.date < snapshotDebt.asOf) {
-            return;
-        }
-        renderDebt({
-            ...snapshotDebt,
-            amountUsd: treasuryDebt.amountUsd,
-            asOf: treasuryDebt.date,
-        }, country, selectionId, elements);
-    }
-    catch (_error) {
-        // The validated Treasury snapshot remains on screen when a live refresh is unavailable.
-    }
-    finally {
-        if (activeTreasuryController === controller) {
-            activeTreasuryController = null;
-        }
-    }
-}
 function selectCountry(countryCode, elements) {
     const debt = debtByCountry.get(countryCode);
     if (!debt) {
         setPackagedDataError(elements);
         return;
     }
-    activeTreasuryController?.abort();
-    activeTreasuryController = null;
     activeCountryCode = countryCode;
     const selectionId = ++activeSelectionId;
     const country = getCountry(countryCode);
     elements.countrySelection.value = countryCode;
     renderDebt(debt, country, selectionId, elements);
-    if (countryCode === 'USA') {
-        void refreshUnitedStatesDebt(debt, country, selectionId, elements);
-    }
 }
 function renderCountryOptions(elements) {
     clearElement(elements.countrySelection);
