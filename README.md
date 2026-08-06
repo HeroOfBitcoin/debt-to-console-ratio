@@ -35,11 +35,9 @@ Open <http://127.0.0.1:8080>. `npm run verify` creates a clean build in `dist/` 
 
 ## Deployment
 
-GitHub Pages serves the `gh-pages` branch:
-
-```bash
-npm run deploy
-```
+Every push to `master` runs the complete verification suite and deploys the
+generated `dist/` directory through GitHub Actions. The workflow can also be
+started manually from the Actions tab.
 
 Do not edit `dist/` directly; it is generated from `src/` and `public/`.
 

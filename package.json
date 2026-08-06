@@ -15,15 +15,12 @@
     "postbuild": "node scripts/copy-public.mjs",
     "test": "npm run build && node --test tests/*.test.mjs",
     "verify": "npm test",
-    "data:update": "node scripts/update-debt-data.mjs",
-    "predeploy": "npm test",
-    "deploy": "gh-pages -d dist"
+    "data:update": "node scripts/update-debt-data.mjs"
   },
   "engines": {
     "node": ">=20"
   },
   "devDependencies": {
-    "gh-pages": "^6.3.0",
     "typescript": "^4.9.5"
   }
 }
